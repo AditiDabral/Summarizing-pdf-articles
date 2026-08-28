@@ -4,30 +4,73 @@ import { Upload, FileText, Sparkles, X } from "lucide-react";
 function App() {
   const [file, setFile] = useState(null);
   const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
 
+  // When user selects a PDF
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
 
-    if (selectedFile && selectedFile.type === "application/pdf") {
-      setFile(selectedFile);
-      setSummary("");
-    } else if (selectedFile) {
-      alert("Please select a PDF file.");
+    if (!selectedFile) {
+      return;
     }
+
+    if (selectedFile.type !== "application/pdf") {
+      alert("Please select a PDF file.");
+      return;
+    }
+
+    setFile(selectedFile);
+    setSummary("");
   };
 
-  const handleSummarize = () => {
+  // Remove selected PDF
+  const removeFile = () => {
+    setFile(null);
+    setSummary("");
+  };
+
+  // Send test text to backend
+  const handleSummarize = async () => {
     if (!file) {
       alert("Please upload a PDF first.");
       return;
     }
 
-    setSummary("Your AI-generated summary will appear here.");
-  };
-
-  const removeFile = () => {
-    setFile(null);
+    setLoading(true);
     setSummary("");
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/summarize",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            text: "Artificial intelligence is a technology that allows computers to perform tasks that normally require human intelligence. Machine learning is a part of artificial intelligence where computers learn patterns from data. AI is used in healthcare, education, finance, transportation and many other industries.",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Backend request failed");
+      }
+
+      const data = await response.json();
+
+      setSummary(data.summary);
+    } catch (error) {
+      console.error("Error:", error);
+
+      setSummary(
+        "Could not connect to the backend. Please make sure your friend's FastAPI server is running."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,6 +81,7 @@ function App() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
 
           <div className="flex items-center gap-3">
+
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900">
               <Sparkles size={18} className="text-white" />
             </div>
@@ -45,6 +89,7 @@ function App() {
             <span className="text-lg font-semibold tracking-tight">
               SummarAI
             </span>
+
           </div>
 
           <span className="hidden text-sm text-slate-500 sm:block">
@@ -53,6 +98,7 @@ function App() {
 
         </div>
       </nav>
+
 
       {/* Main */}
       <main className="mx-auto max-w-3xl px-6 py-16">
@@ -79,6 +125,7 @@ function App() {
 
         </div>
 
+
         {/* Upload Card */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
 
@@ -90,7 +137,10 @@ function App() {
             >
 
               <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition group-hover:scale-105">
-                <Upload size={25} className="text-slate-600" />
+                <Upload
+                  size={25}
+                  className="text-slate-600"
+                />
               </div>
 
               <h2 className="text-base font-semibold">
@@ -128,10 +178,14 @@ function App() {
                 <div className="flex min-w-0 items-center gap-4">
 
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-                    <FileText size={21} className="text-slate-600" />
+                    <FileText
+                      size={21}
+                      className="text-slate-600"
+                    />
                   </div>
 
                   <div className="min-w-0">
+
                     <p className="truncate text-sm font-semibold text-slate-800">
                       {file.name}
                     </p>
@@ -139,6 +193,7 @@ function App() {
                     <p className="mt-1 text-xs text-slate-500">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
+
                   </div>
 
                 </div>
@@ -155,19 +210,26 @@ function App() {
             </div>
           )}
 
+
           {/* Summarize Button */}
           <button
             onClick={handleSummarize}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+            disabled={loading}
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
+
             <Sparkles size={17} />
-            Summarize PDF
+
+            {loading ? "Summarizing..." : "Summarize PDF"}
+
           </button>
 
         </div>
 
+
         {/* Summary */}
         {summary && (
+
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
 
             <div className="mb-5 flex items-center gap-3">
@@ -177,6 +239,7 @@ function App() {
               </div>
 
               <div>
+
                 <h2 className="font-semibold">
                   Summary
                 </h2>
@@ -184,25 +247,32 @@ function App() {
                 <p className="text-xs text-slate-400">
                   AI-generated overview
                 </p>
+
               </div>
 
             </div>
 
+
             <div className="rounded-xl bg-slate-50 p-5">
+
               <p className="text-sm leading-7 text-slate-600">
                 {summary}
               </p>
+
             </div>
 
           </div>
+
         )}
 
-        {/* Footer note */}
+
+        {/* Footer */}
         <p className="mt-8 text-center text-xs text-slate-400">
-          Your PDF will be processed by the backend securely.
+          Your PDF will be processed by the backend.
         </p>
 
       </main>
+
     </div>
   );
 }
