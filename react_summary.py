@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from huggingface_hub import InferenceClient
 from pydantic import BaseModel  # 1. Pydantic ko import kiya
 
-# .env फाइल से टोकन लोड करें
+# .env load
 load_dotenv()
 token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 app = FastAPI()
 
-# React से कनेक्ट करने के लिए CORS इनेबल करें
+# React call
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,19 +20,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hugging Face का Inference Client सेट करें
+# Hugging Face - Inference Client 
 client = InferenceClient(model="facebook/bart-large-cnn", token=token)
 
-# 2. Pydantic Model banaya (Yahan define kiya ki request me kya aana chahiye)
+
 class SummarizeRequest(BaseModel):
     text: str
 
 @app.post("/summarize")
-def summarize(data: SummarizeRequest):  # 3. yahan dict ki jagah Pydantic model ka use kiya
-    # Ab data.text seedha access kar sakte hain
+def summarize(data: SummarizeRequest): 
     response = client.summarization(data.text)
     
-    # रिस्पांस से समरी निकालकर भेजना
+    
     return {"summary": response.summary_text}
 
 
