@@ -1,17 +1,24 @@
 import os
+from io import BytesIO
+
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from huggingface_hub import InferenceClient
-from pydantic import BaseModel  # 1. Pydantic ko import kiya
+from pypdf import PdfReader
 
-# .env load
+
+# Load .env
 load_dotenv()
+
 token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
+
+# Create FastAPI app
 app = FastAPI()
 
-# React call
+
+# Allow React frontend to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,23 +27,65 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Hugging Face - Inference Client 
-client = InferenceClient(model="facebook/bart-large-cnn", token=token)
+
+# Hugging Face client
+client = InferenceClient(
+    model="facebook/bart-large-cnn",
+    token=token
+)
 
 
-class SummarizeRequest(BaseModel):
-    text: str
-
+# PDF summarization endpoint
 @app.post("/summarize")
-def summarize(data: SummarizeRequest): 
-    response = client.summarization(data.text)
-    
-    
-    return {"summary": response.summary_text}
+async def summarize(file: UploadFile = File(...)):
 
+    # Check file type
+    if file.content_type != "application/pdf":
+        return {
+            "error": "Please upload a PDF file."
+        }
 
-""" 1. DOWNLOAD FAST API TERMINAL COMMAND: py -m pip install fastapi uvicorn
-    2. TO RUN:py -m uvicorn react_summary:app --reload
-    3. COPY THE LINK SHOWN IN TERMINAL: http://127.0.0.1:8000
-                                        add  /docs in end
-        proper link is to browse on goole is :http://127.0.0.1:8000/docs (don't copy it from here copy from terminal only)"""
+    # Read uploaded PDF
+    pdf_data = await file.read()
+
+    # Read PDF directly from memory
+    reader = PdfReader(BytesIO(pdf_data))
+
+    # Extract text from all pages
+    text = ""
+
+    for page in reader.pages:
+        page_text = page.extract_text()
+
+        if page_text:
+            text += page_text + "\n"
+
+    # Check if text was extracted
+    if not text.strip():
+        return {
+            "error": "Could not extract text from this PDF."
+        }
+
+    # Split text into smaller chunks
+    chunk_size = 3000
+
+    chunks = [
+        text[i:i + chunk_size]
+        for i in range(0, len(text), chunk_size)
+    ]
+
+    summaries = []
+
+    # Summarize each chunk
+    for chunk in chunks:
+
+        response = client.summarization(chunk)
+
+        summaries.append(response.summary_text)
+
+    # Combine all summaries
+    final_summary = " ".join(summaries)
+
+    return {
+        "summary": final_summary
+    }
