@@ -39,7 +39,7 @@ function App() {
       formData.append("file", file);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/summarize",
+        "http://127.0.0.1:8000/summarize-pdf",
         {
           method: "POST",
           body: formData,
